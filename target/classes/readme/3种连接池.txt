@@ -1,0 +1,135 @@
+
+
+c3p0 开放源码 的 jdbc 连接池， 在lib 中 hibernate 一起发布，
+    包括了 实现 jdbc3 和 jdbc2 扩展规范说明的 Connection池 和 DataSource对象
+
+dbcp 依赖 Jakarta commons-pool 对象池机制的数据库连接池，可以在应用中直接使用，tomcat的数据源 用的dbcp
+
+druid 阿里出品，淘宝和支付宝专用。 包含了ProxyDriver, 一系列内置的JDBC组件库， 一个Sql Server.
+    支持所有兼容jdbc 的数据库。且 针对 mysql 和Oracle 做了优化，比如 Oracle 的 PS Cache内存占用优化，
+    mysql 的ping 检索优化
+
+
+平均对比三者的性能，druid最快，c3p0还行，dbcp我就不吐槽了和其他两个不在一个数量级上
+
+
+druid功能强大，性能高，虽然在复杂环境下稳定性没有测过，但是后援团（阿里）比较强大，就算有问题也能很快的解决。
+而且还提供了监控平台，有助于优化我们的代码和sql。并且在扩展上支持在连接池层面的sql注入预警。
+
+
+
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+        <property name="driverClassName" value="${driverClass}"/>
+        <property name="url" value="${uri}"/>
+        <property name="username" value="${username}"/>
+        <property name="password" value="${password}"/>
+
+        <!-- 连接池启动时创建的连接数量-->
+        <property name="initialSize" value="${initialSize}"/>
+        <!-- 同一时间可以从连接池分配的最大连接数量， 为0时 无限制-->
+        <property name="maxActive" value="${maxActive}"/>
+        <!-- 池里不会被释放的最多空闲连接数量， 为0时 无限制-->
+        <property name="maxIdle" value="${maxIdle}"/>
+        <!-- 在不建立 新的连接的条件下，池中保持的空闲的最小连接数 -->
+        <property name="minIdle" value="${minIdle}"/>
+        <!-- 设置自动回收 超时连接-->
+        <!--<property name="removeAbandoned" value="true"/>-->
+        <!--自动回收超时时间（毫秒）-->
+        <!--<property name="removeAbandonedTimeout" value="${maxWait}"/>-->
+
+        <!-- 等待超时时间,在抛出异常之前，池等待连接被回收的最长时间-->
+        <property name="maxWait" value="${maxWait}" />
+    </bean>
+
+    <bean id="dataSource1" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+        <property name="driverClass" value="${driverClass}"/>
+        <property name="jdbcUrl" value="${uri}"/>
+        <property name="user" value="${username}"/>
+        <property name="password" value="${password}"/>
+
+        <!-- default:3 -->
+        <property name="initialPoolSize" value="${initialSize}" />
+        <!-- default:5-->
+        <property name="maxPoolSize" value="${maxActive}" />
+        <property name="minPoolSize" value="${max}"/>
+        <!--最大空闲时间,60秒内未使用则连接被丢弃。若为0则永不丢弃。Default: 0 -->
+        <property name="maxIdleTime" value="60"/>
+
+        <!--当连接池中的连接耗尽的时候c3p0一次同时获取的连接数。Default: 3 -->
+        <property name="acquireIncrement" value="5" />
+
+        <!--JDBC的标准参数，用以控制数据源内加载的PreparedStatements数量。但由于预缓存的statements
+          属于单个connection而不是整个连接池。所以设置这个参数需要考虑到多方面的因素。
+          如果maxStatements与maxStatementsPerConnection均为0，则缓存被关闭。Default: 0-->
+        <property name="maxStatements" value="0" />
+
+        <!--每60秒检查所有连接池中的空闲连接。Default: 0 -->
+        <property name="idleConnectionTestPeriod" value="60" />
+
+        <!--定义在从数据库获取新连接失败后重复尝试的次数。Default: 30 -->
+        <property name="acquireRetryAttempts" value="30" />
+
+        <!--获取连接失败将会引起所有等待连接池来获取连接的线程抛出异常。但是数据源仍有效
+          保留，并在下次调用getConnection()的时候继续尝试获取连接。如果设为true，那么在尝试
+          获取连接失败后该数据源将申明已断开并永久关闭。Default: false-->
+        <property name="breakAfterAcquireFailure" value="true" />
+
+
+        <!--因性能消耗大请只在需要的时候使用它。如果设为true那么在每个connection提交的
+          时候都将校验其有效性。建议使用idleConnectionTestPeriod或automaticTestTable
+          等方法来提升连接测试的性能。Default: false -->
+        <property name="testConnectionOnCheckout"  value="false" />
+
+    </bean>
+
+
+    <bean id="dataSource2" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+        <!-- 基本属性 url、user、password -->
+        <property name="driverClassName" value="${driverClass}"/>
+        <property name="url" value="${url}"/>
+        <property name="username" value="${username}"/>
+        <property name="password" value="${password}"/>
+
+        <!-- 配置初始化大小、最小、最大 -->
+        <property name="initialSize" value="5" />
+        <property name="minIdle" value="10" />
+        <property name="maxActive" value="20" />
+
+        <!-- 配置获取连接等待超时的时间 -->
+      <property name="maxWait" value="60000" />
+
+        <!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+        <property name="timeBetweenEvictionRunsMillis" value="60000" />
+
+        <!-- 配置一个连接在池中最小生存的时间，单位是毫秒 -->
+        <property name="minEvictableIdleTimeMillis" value="300000" />
+
+        <!--<property name="validationQuery" value="SELECT 'x'" />-->
+
+        <!--<property name="testWhileIdle" value="true" />-->
+
+        <!--<property name="testOnBorrow" value="false" />-->
+
+        <!--<property name="testOnReturn" value="false" />-->
+
+
+
+        <!--&lt;!&ndash; 打开PSCache，并且指定每个连接上PSCache的大小 &ndash;&gt;-->
+        <!--<property name="poolPreparedStatements" value="true" />-->
+
+        <!--<property name="maxPoolPreparedStatementPerConnectionSize" value="20" />-->
+
+
+
+        <!--&lt;!&ndash; 连接泄漏处理。Druid提供了RemoveAbandanded相关配置，用来关闭长时间不使用的连接（例如忘记关闭连接）。 &ndash;&gt;-->
+        <!--<property name="removeAbandoned" value="true" />-->
+
+        <!--&lt;!&ndash; 1800秒，也就是30分钟 &ndash;&gt;-->
+        <!--<property name="removeAbandonedTimeout" value="1800" />-->
+
+        <!--&lt;!&ndash; 关闭abanded连接时输出错误日志 &ndash;&gt;-->
+        <!--<property name="logAbandoned" value="true" />-->
+
+        <!--&lt;!&ndash; 配置监控统计拦截的filters, 监控统计："stat",防SQL注入："wall",组合使用： "stat,wall" &ndash;&gt;-->
+        <!--<property name="filters" value="stat" />-->
+    </bean>
